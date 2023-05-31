@@ -1,12 +1,12 @@
 package ru.netology.nmedia.ui
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PointF
-import android.graphics.RectF
+import android.graphics.*
+import android.os.Build
 import android.util.AttributeSet
 import android.view.View
+import androidx.annotation.ColorInt
+import androidx.annotation.RequiresApi
 import androidx.core.content.withStyledAttributes
 import ru.netology.nmedia.R
 import ru.netology.nmedia.util.AndroidUtils
@@ -22,6 +22,7 @@ class StatsView @JvmOverloads constructor(
     private var radius = 0F
     private var center = PointF(0F, 0F)
     private var oval = RectF(0F, 0F, 0F, 0F)
+    private var dot = PointF(0F, 0F)
 
     private var lineWidth = AndroidUtils.dp(context, 5F).toFloat()
     private var fontSize = AndroidUtils.dp(context, 40F).toFloat()
@@ -61,23 +62,40 @@ class StatsView @JvmOverloads constructor(
             center.x - radius, center.y - radius,
             center.x + radius, center.y + radius,
         )
+        dot = PointF(
+            center.x, center.y - radius,
+        )
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onDraw(canvas: Canvas) {
         if (data.isEmpty()) {
             return
         }
 
+
         var startFrom = -90F
+        var dotColor = context.getColor(R.color.base_color)
+        paint.color = dotColor
+        canvas.drawCircle(dot.x, dot.y + radius, radius, paint)
+
         for ((index, datum) in data.withIndex()) {
-            val angle = 360F * datum
+            val angle = 360F * getShare()
             paint.color = colors.getOrNull(index) ?: randomColor()
-            canvas.drawArc(oval, startFrom, angle, false, paint)
+            if (index == 0) {
+                dotColor = paint.color
+            }
+            if (datum != 0F) {
+                canvas.drawArc(oval, startFrom, angle, false, paint)
+            }
             startFrom += angle
         }
 
+        paint.color = dotColor
+        canvas.drawPoint(dot.x, dot.y, paint)
+
         canvas.drawText(
-            "%.2f%%".format(data.sum() * 100),
+            "%.2f%%".format(getSharesSum(data)),
             center.x,
             center.y + textPaint.textSize / 4,
             textPaint,
@@ -85,4 +103,16 @@ class StatsView @JvmOverloads constructor(
     }
 
     private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+
+    private fun getShare() = 0.25F
+
+    private fun getSharesSum (data: List<Float>): Float{
+        var sharesCount = 0F
+        for (datum in data) {
+            if (datum != 0F){
+                sharesCount += 1
+            }
+        }
+        return getShare() * sharesCount
+    }
 }
