@@ -1,12 +1,14 @@
 package ru.netology.nmedia.ui
 
+import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
-import android.os.Build
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PointF
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import androidx.annotation.ColorInt
-import androidx.annotation.RequiresApi
+import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.nmedia.R
 import ru.netology.nmedia.util.AndroidUtils
@@ -22,11 +24,14 @@ class StatsView @JvmOverloads constructor(
     private var radius = 0F
     private var center = PointF(0F, 0F)
     private var oval = RectF(0F, 0F, 0F, 0F)
-    private var dot = PointF(0F, 0F)
 
     private var lineWidth = AndroidUtils.dp(context, 5F).toFloat()
     private var fontSize = AndroidUtils.dp(context, 40F).toFloat()
     private var colors = emptyList<Int>()
+
+    private var progress = 0F
+    private var valueAnimator: ValueAnimator? = null
+    private var startFrom = -90F
 
     init {
         context.withStyledAttributes(attrs, R.styleable.StatsView) {
@@ -52,7 +57,7 @@ class StatsView @JvmOverloads constructor(
     var data: List<Float> = emptyList()
         set(value) {
             field = value
-            invalidate()
+            update()
         }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -62,57 +67,46 @@ class StatsView @JvmOverloads constructor(
             center.x - radius, center.y - radius,
             center.x + radius, center.y + radius,
         )
-        dot = PointF(
-            center.x, center.y - radius,
-        )
     }
 
-    @RequiresApi(Build.VERSION_CODES.M)
     override fun onDraw(canvas: Canvas) {
         if (data.isEmpty()) {
             return
         }
 
-
-        var startFrom = -90F
-        var dotColor = context.getColor(R.color.base_color)
-        paint.color = dotColor
-        canvas.drawCircle(dot.x, dot.y + radius, radius, paint)
-
         for ((index, datum) in data.withIndex()) {
-            val angle = 360F * getShare()
+            val angle = 360F * datum
             paint.color = colors.getOrNull(index) ?: randomColor()
-            if (index == 0) {
-                dotColor = paint.color
-            }
-            if (datum != 0F) {
-                canvas.drawArc(oval, startFrom, angle, false, paint)
-            }
+            canvas.drawArc(oval, startFrom + 360 * progress, angle * progress, false, paint)
             startFrom += angle
         }
 
-        paint.color = dotColor
-        canvas.drawPoint(dot.x, dot.y, paint)
-
         canvas.drawText(
-            "%.2f%%".format(getSharesSum(data)),
+            "%.2f%%".format(data.sum() * 100),
             center.x,
             center.y + textPaint.textSize / 4,
             textPaint,
         )
     }
 
-    private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
-
-    private fun getShare() = 0.25F
-
-    private fun getSharesSum (data: List<Float>): Float{
-        var sharesCount = 0F
-        for (datum in data) {
-            if (datum != 0F){
-                sharesCount += 1
-            }
+    private fun update() {
+        valueAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
         }
-        return getShare() * sharesCount
+        progress = 0F
+
+        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+            addUpdateListener { anim ->
+                progress = anim.animatedValue as Float
+                invalidate()
+            }
+            duration = 2000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
     }
+
+    private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
 }
