@@ -28,10 +28,10 @@ class StatsView @JvmOverloads constructor(
     private var lineWidth = AndroidUtils.dp(context, 5F).toFloat()
     private var fontSize = AndroidUtils.dp(context, 40F).toFloat()
     private var colors = emptyList<Int>()
+    private var animationType = 0
 
     private var progress = 0F
     private var valueAnimator: ValueAnimator? = null
-    private var startFrom = -90F
 
     init {
         context.withStyledAttributes(attrs, R.styleable.StatsView) {
@@ -39,6 +39,7 @@ class StatsView @JvmOverloads constructor(
             fontSize = getDimension(R.styleable.StatsView_fontSize, fontSize)
             val resId = getResourceId(R.styleable.StatsView_colors, 0)
             colors = resources.getIntArray(resId).toList()
+            animationType = getInteger(R.styleable.StatsView_animationType,0)
         }
     }
 
@@ -74,15 +75,22 @@ class StatsView @JvmOverloads constructor(
             return
         }
 
+        var startFrom = if (animationType == 3) -45F else -90F
+
         for ((index, datum) in data.withIndex()) {
             val angle = 360F * datum
             paint.color = colors.getOrNull(index) ?: randomColor()
-            canvas.drawArc(oval, startFrom + 360 * progress, angle * progress, false, paint)
-            startFrom += angle
+            when (animationType){
+                0-> noneAnimation(canvas,angle,index,paint,startFrom)
+                1-> parallelAnimation(canvas,angle,index,paint,startFrom)
+                2-> sequentialAnimation(canvas,angle,index,paint,startFrom)
+                3-> biParallelAnimation(canvas,angle,index,paint,startFrom)
+            }
+            startFrom +=angle
         }
 
         canvas.drawText(
-            "%.2f%%".format(data.sum() * 100),
+            "%.2f%%".format( if (animationType == 0) 100F else progress * 100),
             center.x,
             center.y + textPaint.textSize / 4,
             textPaint,
@@ -101,7 +109,7 @@ class StatsView @JvmOverloads constructor(
                 progress = anim.animatedValue as Float
                 invalidate()
             }
-            duration = 2000
+            duration = 4000
             interpolator = LinearInterpolator()
         }.also {
             it.start()
@@ -109,4 +117,49 @@ class StatsView @JvmOverloads constructor(
     }
 
     private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+
+    private fun biParallelAnimation(canvas: Canvas, angle: Float, index: Int, paint: Paint, startFrom: Float){
+        canvas.drawArc(oval, startFrom, (angle * progress)/2, false, paint)
+        canvas.drawArc(oval, startFrom , (angle * progress)/-2, false, paint)
+    }
+
+    private fun parallelAnimation(canvas: Canvas, angle: Float, index: Int, paint: Paint, startFrom: Float){
+        canvas.drawArc(oval, startFrom + 360 * progress, angle * progress, false, paint)
+    }
+
+    private fun noneAnimation(canvas: Canvas, angle: Float, index: Int, paint: Paint, startFrom: Float){
+        canvas.drawArc(oval, startFrom, angle, false, paint)
+    }
+
+    private fun sequentialAnimation(canvas: Canvas, angle: Float, index: Int, paint: Paint, startFrom: Float){
+
+        val drawAngle = angle * (progress - index * 0.25F) * 4
+            val endTo: Float
+
+        when (index) {
+            0 -> {
+                endTo = if (progress < 0.25) drawAngle else angle
+                canvas.drawArc(oval, startFrom, endTo, false, paint)
+            }
+            1 -> {
+                if (progress > 0.25){
+                    endTo = if (progress < 0.5)  drawAngle else angle
+                    canvas.drawArc(oval, startFrom, endTo, false, paint)
+                }
+            }
+            2 -> {
+                if (progress > 0.5){
+                    endTo = if (progress < 0.75) drawAngle else angle
+                    canvas.drawArc(oval, startFrom, endTo, false, paint)
+                }
+            }
+            3 -> {
+                if (progress > 0.75){
+                    endTo = if (progress < 1) drawAngle else angle
+                    canvas.drawArc(oval, startFrom, endTo, false, paint)
+                }
+            }
+        }
+
+    }
 }
