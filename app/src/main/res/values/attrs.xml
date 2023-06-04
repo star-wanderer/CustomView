@@ -4,6 +4,12 @@
         <attr name="lineWidth" format="dimension|reference" />
         <attr name="fontSize" format="dimension|reference" />
         <attr name="colors" format="reference" />
+        <attr name="animationType" format="enum">
+            <enum name="none" value="0"/>
+            <enum name="parallel" value="1"/>
+            <enum name="sequential" value="2"/>
+            <enum name="bi-parallel" value="3"/>
+        </attr>
     </declare-styleable>
 </resources>
 

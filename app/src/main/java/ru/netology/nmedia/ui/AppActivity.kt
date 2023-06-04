@@ -28,7 +28,8 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                 0.25F,
                 0.25F,
             )
-        }, 3000)
+        }, 1000)
+
 
 //        val label = findViewById<TextView>(R.id.label)
 //
